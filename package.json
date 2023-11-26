@@ -1,6 +1,6 @@
 {
   "name": "sevnstack",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "An interactive CLI to scaffold, build and deploy full-stack web apps with Nuxt, Vuetify and Express.",
   "author": "Basedwon <basedwon@protonmail.com>",
   "license": "MIT",
