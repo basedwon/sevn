@@ -1,0 +1,40 @@
+mport Vue from 'vue'
+import VueClipboard from 'vue-clipboard2'
+import LevelDB from '@plaindb/leveldb'
+
+const { _, log } = require('basd')
+const Crypto = require('crpdo')
+
+global._ = _
+global.log = log
+global.Crypto = Crypto
+
+export default async ({ store, $vuetify, $snackify, i18n }, inject) => {
+  inject('snack', $snackify.show.bind($snackify))
+
+  const db = new LevelDB(true)
+  inject('db', db)
+
+  const configDb = db.sub('config')
+
+  store.subscribe(async (mutation, state) => {
+    const { type, payload } = mutation
+    if (type === 'set') {
+      const { key, value } = payload
+      if (key === 'shade') {
+        await configDb.put('shade', value)
+        $vuetify.theme.dark = value
+      } else if (key === 'lang') {
+        i18n.setLocale(_.isString(value) ? value : value.code)
+      }
+    }
+  })
+
+  // Lang
+  const lang = i18n.localeProperties
+  store.commit('set', { key: 'lang', value: lang })
+  // Shade
+  let shade = await configDb.get('shade')
+  if (_.isNil(shade)) shade = true
+  store.commit('set', { key: 'shade', value: shade })
+}

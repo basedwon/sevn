@@ -1,0 +1,42 @@
+const fs = require('fs')
+const path = require('path')
+
+const siteTitle = '{{siteName}}'
+const siteSubtitle = '{{siteSubtitle}}'
+const siteDescription = '{{description}}'
+const themeColor = '{{themeColor}}'
+const repopath = '{{repopath}}'
+const tileColor = '{{tileColor}}'
+const siteUrl = '{{protocol}}://{{domain}}'
+
+export default {
+  {{#if static}}
+  target: 'static',
+  ssr: false,
+  generate: {
+    dir: 'dist/public',
+    fallback: true,
+  },
+  {{else}}
+  ssr: true,
+  target: 'server',
+  {{/if}}
+  loadingIndicator: {
+    name: 'circle',
+    color: '#006a00',
+    background: '#121212'
+  },
+  components: true,
+  css: [],
+  modules: [
+    ['snackify', { color: 'green darken-3' }],
+    '@nuxtjs/axios',
+    '@nuxtjs/i18n',
+    {{#if (hasFeature pwa)}}
+    '@nuxtjs/pwa',
+    {{/if}}
+  ],
+  plugins: [
+    '~/plugins/plugin.js',
+  ],
+}

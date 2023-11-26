@@ -1,0 +1,19 @@
+FROM node:8.9-alpine
+
+RUN npm config set package-lock false
+
+WORKDIR /usr/src/app
+
+COPY package.json .
+
+RUN npm install
+
+ENV HOST 0.0.0.0
+
+COPY . .
+
+EXPOSE {{port}}
+
+ENTRYPOINT [ "./entrypoint.sh" ]
+
+CMD [ "node", "src/server/client.js" ]

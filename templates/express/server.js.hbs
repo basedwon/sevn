@@ -1,0 +1,157 @@
+require('dotenv').config()
+const fs = require('fs')
+const path = require('path')
+const util = require('util')
+const cors = require('cors')
+const express = require('express')
+const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
+const LevelDB = require('@plaindb/leveldb')
+const { _, log } = require('basd')
+const Crypto = require('crpdo')
+// const { Server } = require('socket.io')
+// const http = require('http')
+const https = require('https')
+
+// Env
+const port = process.env.PORT || 3000
+const appUrl = process.env.NODE_ENV === 'development' ? process.env.APP_URL_DEV : process.env.APP_URL
+
+// Fn
+const helperDir = path.resolve('helpers')
+const helper = n => path.resolve(`${helperDir}/${n}`)
+
+{{#if (hasFeature websockets)}}
+// Socks
+function getSocks() {
+  const arr = []
+  for (const p of fs.readdirSync('./sockets')) {
+    if (!p.endsWith('.js'))
+      continue
+    const filePath = path.resolve(`./sockets/${p}`)
+    let name = p.split('.').slice(0, -1).join('.')
+    if (name.endsWith('-sock'))
+      name = name.replace(/-sock$/, '')
+    const fn = require(filePath)
+    arr.push(fn)
+  }
+  return socket => arr.forEach(fn => fn(socket))
+}
+{{/if}}
+
+// Routes
+function parseRoutes(routesDir = './routes', routes = [], dirname) {
+  let root = fs.readdirSync(routesDir, { withFileTypes: true })
+  for (let dirent of root) {
+    let name = dirent.name
+    if (dirent.isDirectory()) {
+      let dirPath = dirname ? `${dirname}/${name}` : name
+      const route = { name, type: 'dir', path: dirPath, children: [] }
+      parseRoutes(`${routesDir}/${name}`, route.children, route.path)
+      routes.push(route)
+    } else {
+      let ext = name.split('.').pop()
+      name = name.split('.').slice(0, -1).join('.')
+      const file = `${dirname ? dirname + '/' : ''}${name}.${ext}`
+      let routePath = name === 'index' ? '/' : `/${name}`
+      if (dirname) {
+        let arr = name.split('-')
+        if (arr[0] !== dirname)
+          arr.unshift(dirname)
+        if (arr[arr.length - 1] === 'index')
+          arr.pop()
+        routePath = `/${arr.shift()}`
+        if (arr.length)
+          routePath += `/${arr.join('-')}`
+
+      }
+      routes.push({ name, ext, type: 'file', file, route: routePath })
+    }
+  }
+  return routes
+}
+function reqRoutes(routes, app) {
+  for (let obj of routes) {
+    if (obj.type === 'dir') {
+      reqRoutes(obj.children, app)
+    } else {
+      const router = global.router = express.Router()
+      require(path.resolve('routes', obj.file))
+      app.use(obj.route, router)
+    }
+  }
+  delete global.router
+  return routes
+}
+function getRoutes(app) {
+  return reqRoutes(parseRoutes(), app)
+}
+
+// Utility
+function getIp(req) {
+  // https://stackoverflow.com/questions/10849687/express-js-how-to-get-remote-client-address
+  // const ip = (req.headers['x-forwarded-for'] || req.connection.remoteAddress || '').split(',')[0].trim()
+  // const ip = req.ip
+  let ip = req.headers['x-real-ip'] || req.connection.remoteAddress
+  if (ip === '::1')
+    ip = '107.179.20.188'
+    // ip = '127.0.0.1'
+  return ip
+}
+
+_.assign(global, { _, log, Crypto })
+
+// Serve
+
+async function serve() {
+  const db = new LevelDB(false)
+  await db.isReady()
+  global.db = db
+
+  const app = express()
+
+  const corsOptions = {
+    origin: 'https://localhost:7777', // Replace with your front-end's URL
+    credentials: true, // This is important for cookies
+  }
+
+  app.use(cors(corsOptions))
+
+  app.use(cookieParser())
+
+  app.use(bodyParser.urlencoded({ extended: true }))
+  app.use(bodyParser.json())
+  {{#if (hasFeature websockets)}}
+  // https://stackoverflow.com/questions/20909778/how-to-use-socket-io-in-express-routes
+  app.use((req, res, next) => {
+    res.io = io
+    next()
+  })
+  {{/if}}
+  app.set('trust proxy', true)
+
+  
+  // Read the certificate and key
+  // key: fs.readFileSync(),
+  // cert: fs.readFileSync(path.resolve(__dirname, '../../../../work/conf/certs', 'localhost.pem'))
+
+  const keyPath = path.resolve(__dirname, '../../../../../work/conf/certs', 'localhost-key.pem')
+  const certPath = path.resolve(__dirname, '../../../../../work/conf/certs', 'localhost.pem')
+  const privateKey = fs.readFileSync(keyPath, 'utf8')
+  const certificate = fs.readFileSync(certPath, 'utf8')
+
+  const credentials = { key: privateKey, cert: certificate }
+
+  // Create HTTPS server
+  const httpServer = https.createServer(credentials, app)
+  // const httpServer = http.createServer(app)
+
+  // const io = new Server(httpServer, { cors: { origin: appUrl }})
+  const routes = getRoutes(app)
+  // io.on('connection', getSocks())
+  httpServer.listen(port, () => log(`\nServer running on port ${port}\n`))
+}
+
+serve().catch(err => {
+  log('server error', err)
+})

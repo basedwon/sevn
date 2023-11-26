@@ -1,0 +1,40 @@
+{
+  "name": "{{siteNameKebab}}",
+  "version": "0.0.0",
+  "description": "{{description}}",
+  "main": "index.js",
+  "scripts": {
+    "dev": "MINIMAL=1 nuxt",
+    "build": "nuxt build",
+    "start": "nuxt start",
+    "generate": "nuxt generate",
+    "update": "npm run update:prod && npm run update:dev",
+    "update:prod": "npm i -S basd@latest @plaindb/leveldb@latest",
+    "update:dev": "npm i -D @basd/testr@latest"
+  },
+  "dependencies": {
+    "@nuxtjs/axios": "^5.13.6",
+    "@nuxtjs/i18n": "^7.3.1",
+    {{#if (hasFeature pwa)}}
+    "@nuxtjs/pwa": "^3.3.5",
+    {{/if}}
+    "@plaindb/leveldb": "^0.0.0",
+    "basd": "^1.0.16",
+    "crpdo": "^1.0.8",
+    "drag-drop": "^7.2.0",
+    "express": "^4.18.2",
+    "nuxt": "^2.17.2",
+    "snackify": "^0.0.0",
+    "vuetify": "^2.6.10"
+  },
+  "devDependencies": {
+    "@basd/testr": "^0.1.2",
+    "@nuxtjs/vuetify": "^1.12.3",
+    {{#if decoupled}}
+    "concurrently": "^8.2.2",
+    {{/if}}
+    "stylus": "^0.54.8",
+    "stylus-loader": "^4.3.0"
+  },
+  "private": true
+}

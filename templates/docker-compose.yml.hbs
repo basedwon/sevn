@@ -1,0 +1,23 @@
+# // Base Composition //
+version: "3"
+
+services:
+  dev:
+    build: .
+    ports:
+      - "3000:{{port}}"
+    volumes:
+      - ./src:/usr/src/app/src
+      - ./nuxt.config.js:/usr/src/app/nuxt.config.js
+    environment:
+      - FRONTEND_URL={{frontendDomain}}
+      - API_URL={{backendUrl}}
+    command: [ "node_modules/.bin/nodemon", "src/server/client.js" ]
+  prod:
+    build: .
+    ports:
+      - "3033:{{port}}"
+    environment:
+      - NODE_ENV=production
+      - FRONTEND_URL={{domain}}
+      - API_URL={{backendUrl}}
